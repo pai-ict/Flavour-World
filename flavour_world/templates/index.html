@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flavour World</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to Flavour World</h1>
+        <form id="search-form">
+            <input type="text" name="ingredient" placeholder="Enter ingredient" required>
+            <button type="submit">Search Recipes</button>
+        </form>
+        
+        <div id="recipes">
+            <!-- Recipe results will appear here -->
+        </div>
+    </div>
+
+    <!-- Modal for showing recipe details -->
+    <div id="recipe-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2 id="recipe-title"></h2>
+            <img id="recipe-image" src="" alt="Recipe Image">
+            <div id="ingredients"></div>
+            <div id="instructions"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.querySelector("#search-form");
+        const recipeModal = document.getElementById("recipe-modal");
+        const closeButton = document.querySelector(".close-button");
+
+        form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const ingredient = document.querySelector("input[name='ingredient']").value;
+            const response = await fetch('/search', {
+                method: 'POST',
+                body: new URLSearchParams({ 'ingredient': ingredient })
+            });
+            const recipes = await response.json();
+            const recipesDiv = document.getElementById("recipes");
+            recipesDiv.innerHTML = '';
+            if (recipes.error) {
+                recipesDiv.innerHTML = `<p>${recipes.error}</p>`;
+            } else {
+                recipes.forEach(recipe => {
+                    const recipeDiv = document.createElement('div');
+                    recipeDiv.classList.add('recipe');
+                    recipeDiv.innerHTML = `
+                        <h3>${recipe.title}</h3>
+                        <img src="${recipe.image}" alt="${recipe.title}">
+                        <p><a href="javascript:void(0);" class="view-recipe" data-id="${recipe.id}">View Recipe</a></p>
+                    `;
+                    recipesDiv.appendChild(recipeDiv);
+                });
+            }
+        });
+
+        // View Recipe functionality
+        document.addEventListener("click", async (event) => {
+            if (event.target && event.target.classList.contains("view-recipe")) {
+                const recipeId = event.target.getAttribute("data-id");
+                const response = await fetch(`/recipe/${recipeId}`);
+                const recipe = await response.json();
+
+                if (recipe.error) {
+                    alert(recipe.error);
+                } else {
+                    document.getElementById("recipe-title").innerText = recipe.title;
+                    document.getElementById("recipe-image").src = recipe.image;
+                    document.getElementById("ingredients").innerHTML = "<h3>Ingredients:</h3>" + recipe.extendedIngredients.map(ingredient => `<p>${ingredient.original}</p>`).join('');
+                    document.getElementById("instructions").innerHTML = "<h3>Instructions:</h3>" + recipe.instructions;
+
+                    // Open the modal
+                    recipeModal.style.display = "block";
+                }
+            }
+        });
+
+        // Close Modal
+        closeButton.addEventListener("click", () => {
+            recipeModal.style.display = "none";
+        });
+
+        window.onclick = (event) => {
+            if (event.target === recipeModal) {
+                recipeModal.style.display = "none";
+            }
+        };
+    </script>
+</body>
+</html>
